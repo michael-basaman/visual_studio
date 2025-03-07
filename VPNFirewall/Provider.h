@@ -11,6 +11,8 @@
 #include <fwpmu.h>
 #include <stdio.h>
 #include <string>
+#include <list>
+#include <sstream>
 
 #define VPNFIREWALL_SESSION_NAME L"SDK Examples"
 
@@ -18,6 +20,26 @@
 providerKey: E2E41B20-DCAF-406A-AD3F-2110A8172910
 subLayerKey: FC7F24D0-F50B-49EF-B366-F364022452D8
 */
+
+typedef struct FilterInfo {
+    FilterInfo(const std::string& guid, const std::string& action, const std::string& name, UINT64 effectiveWeight, bool isDummy) :
+            guid(guid),
+            action(action),
+            name(name),
+            effectiveWeight(effectiveWeight),
+            isDummy(isDummy) {
+        std::stringstream ss;
+        ss << effectiveWeight;
+        weight = ss.str();
+    }
+
+    std::string weight;
+    std::string guid;
+    std::string action;
+    std::string name;
+    UINT64 effectiveWeight;
+    bool isDummy;
+} FilterInfo;
 
 class Provider {
 private:
@@ -30,7 +52,7 @@ private:
 
     UINT32 ip_string_to_uint32(const std::string& ip_string);
 
-    void log_error(const std::string& error, DWORD errorMessageID);
+    //void log_error(const std::string& error, DWORD errorMessageID);
 
     std::string GetErrorMessage(DWORD errorMessageID);
 
@@ -44,6 +66,8 @@ public:
 
     void PrintMask16(const std::string& prefix);
 
+    std::list<FilterInfo> GetFilters();
+
     DWORD Install(
     );
 
@@ -54,5 +78,5 @@ public:
         __in HANDLE engine
     );
 
-    static HANDLE RandomHandle();
+    void log_error(const std::string& error, DWORD errorMessageID);
 };

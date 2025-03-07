@@ -165,6 +165,141 @@ DWORD Provider::Install(
     return result;
 }
 
+std::list<FilterInfo> Provider::GetFilters() {
+    std::list<FilterInfo> ret;
+
+    ret.push_back(FilterInfo("", "", "", 0, true));
+
+    if (!initialized) {
+        log_error("GetFilters() not initialized", ERROR_SUCCESS);
+        return ret;
+    }
+    else {
+        log_error("GetFilters() start", ERROR_SUCCESS);
+    }
+
+    DWORD result = ERROR_SUCCESS;
+    HANDLE engine = NULL;
+    FWPM_SESSION0 session;
+
+    memset(&session, 0, sizeof(session));
+    // The session name isn't required but may be useful for diagnostics.
+    session.displayData.name = sessionName;
+    // Set an infinite wait timeout, so we don't have to handle FWP_E_TIMEOUT
+    // errors while waiting to acquire the transaction lock.
+    session.txnWaitTimeoutInMSec = INFINITE;
+
+    // The authentication service should always be RPC_C_AUTHN_DEFAULT.
+    result = FwpmEngineOpen0(
+        NULL,
+        RPC_C_AUTHN_DEFAULT,
+        NULL,
+        &session,
+        &engine
+    );
+
+    if (result != ERROR_SUCCESS) {
+        FwpmEngineClose0(engine);
+
+        log_error("GetFilters() FwpmEngineOpen0", result);
+        return ret;
+    }
+
+    // We delete the provider and sublayer from within a single transaction, so
+    // that we always leave the system in a consistent state even in error
+    // paths.
+    result = FwpmTransactionBegin0(engine, 0);
+
+    if (result != ERROR_SUCCESS) {
+        FwpmEngineClose0(engine);
+
+        log_error("GetFilters() FwpmTransactionBegin0", result);
+        return ret;
+    }
+
+    HANDLE enumHandle = NULL;
+    FWPM_FILTER0** entries = NULL;
+    UINT32 numEntriesRequested = INFINITE;
+    UINT32 numEntriesReturned = 0;
+
+    result = FwpmFilterCreateEnumHandle0(engine, NULL, &enumHandle);
+    if (result != ERROR_SUCCESS) {
+        FwpmEngineClose0(engine);
+
+        log_error("GetFilters() FwpmFilterCreateEnumHandle0", result);
+        return ret;
+    }
+
+    // 3. Enumerate filters
+    result = FwpmFilterEnum0(engine, enumHandle, numEntriesRequested, &entries, &numEntriesReturned);
+    if (result != ERROR_SUCCESS) {
+        // Handle error
+        FwpmFilterDestroyEnumHandle0(engine, enumHandle);
+        FwpmEngineClose0(engine);
+
+        log_error("GetFilters() FwpmFilterEnum0", result);
+        return ret;
+    }
+
+    ret.clear();
+
+    // 4. Process returned filters
+    if (entries && numEntriesReturned > 0) {
+        for (UINT32 i = 0; i < numEntriesReturned; ++i) {
+            if (memcmp(&(entries[i]->subLayerKey), &subLayerKey, sizeof(GUID)) == 0) {
+                char filterKeyString[256];
+                memset(filterKeyString, 0, 256);
+
+                snprintf(filterKeyString, 256, "%08lX-%04hX-%04hX-%02hhX%02hhX-%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX",
+                    entries[i]->filterKey.Data1, entries[i]->filterKey.Data2, entries[i]->filterKey.Data3,
+                    entries[i]->filterKey.Data4[0], entries[i]->filterKey.Data4[1], entries[i]->filterKey.Data4[2], entries[i]->filterKey.Data4[3],
+                    entries[i]->filterKey.Data4[4], entries[i]->filterKey.Data4[5], entries[i]->filterKey.Data4[6], entries[i]->filterKey.Data4[7]);
+
+                std::stringstream ssAction;
+
+                if (entries[i]->action.type == FWP_ACTION_BLOCK) {
+                    ssAction << "Block";
+                }
+                else if (entries[i]->action.type == FWP_ACTION_PERMIT) {
+                    ssAction << "Allow";
+                }
+                else {
+                    ssAction << "Error";
+                }
+
+                std::wstring wideString(entries[i]->displayData.name);
+                std::string narrowString(wideString.begin(), wideString.end());
+
+                UINT64 weight = *(entries[i]->effectiveWeight.uint64);
+
+                ret.push_back(FilterInfo(filterKeyString, ssAction.str(), narrowString, weight, false));
+            }
+        }
+    }
+
+    // 5. Free memory
+    if (entries) {
+        void* ptr = (void*)entries;
+
+        FwpmFreeMemory0(&ptr);
+    }
+
+    // 6. Destroy enumeration handle
+    result = FwpmFilterDestroyEnumHandle0(engine, enumHandle);
+    if (result != ERROR_SUCCESS) {
+        FwpmEngineClose0(engine);
+
+        log_error("GetFilters() FwpmFilterDestroyEnumHandle0", result);
+        return ret;
+    }
+
+    FwpmEngineClose0(engine);
+
+    log_error("GetFilters() success", ERROR_SUCCESS);
+
+    return ret;
+}
+
 DWORD Provider::Uninstall(
 )
 {
@@ -623,7 +758,10 @@ DWORD Provider::AddFilters(
 
     // basamanConditions
 
+    UINT64 weight = UINT64_MAX;
+
     wchar_t anticirculatoryName[64] = L"VPNFirewall anticirculatory";
+    UINT64 anticirculatoryWeight = weight--;
     FWPM_FILTER0 anticirculatoryFilter;
     memset(&anticirculatoryFilter, 0, sizeof(anticirculatoryFilter));
     anticirculatoryFilter.displayData.name = anticirculatoryName;
@@ -633,8 +771,8 @@ DWORD Provider::AddFilters(
     anticirculatoryFilter.layerKey = FWPM_LAYER_OUTBOUND_TRANSPORT_V4;
     anticirculatoryFilter.numFilterConditions = 3;
     anticirculatoryFilter.action.type = FWP_ACTION_PERMIT;
-    anticirculatoryFilter.weight.type = FWP_UINT8;
-    anticirculatoryFilter.weight.uint8 = 15;
+    anticirculatoryFilter.weight.type = FWP_UINT64;
+    anticirculatoryFilter.weight.uint64 = &anticirculatoryWeight;
 
     result = FwpmFilterAdd0(engine, &anticirculatoryFilter, NULL, NULL);
 
@@ -650,6 +788,7 @@ DWORD Provider::AddFilters(
     }
 
     wchar_t wsDiscoveryName[64] = L"VPNFirewall wsDiscovery";
+    UINT64 wsDiscoveryWeight = weight--;
     FWPM_FILTER0 wsDiscoveryFilter;
     memset(&wsDiscoveryFilter, 0, sizeof(wsDiscoveryFilter));
     wsDiscoveryFilter.displayData.name = wsDiscoveryName;
@@ -659,8 +798,8 @@ DWORD Provider::AddFilters(
     wsDiscoveryFilter.layerKey = FWPM_LAYER_OUTBOUND_TRANSPORT_V4;
     wsDiscoveryFilter.numFilterConditions = 4;
     wsDiscoveryFilter.action.type = FWP_ACTION_PERMIT;
-    wsDiscoveryFilter.weight.type = FWP_UINT8;
-    wsDiscoveryFilter.weight.uint8 = 15;
+    wsDiscoveryFilter.weight.type = FWP_UINT64;
+    wsDiscoveryFilter.weight.uint64 = &wsDiscoveryWeight;
 
     result = FwpmFilterAdd0(engine, &wsDiscoveryFilter, NULL, NULL);
 
@@ -676,6 +815,7 @@ DWORD Provider::AddFilters(
     }
 
     wchar_t uPnPName[64] = L"VPNFirewall uPnP";
+    UINT64 uPnPWeight = weight--;
     FWPM_FILTER0 uPnPFilter;
     memset(&uPnPFilter, 0, sizeof(uPnPFilter));
     uPnPFilter.displayData.name = uPnPName;
@@ -685,8 +825,8 @@ DWORD Provider::AddFilters(
     uPnPFilter.layerKey = FWPM_LAYER_OUTBOUND_TRANSPORT_V4;
     uPnPFilter.numFilterConditions = 4;
     uPnPFilter.action.type = FWP_ACTION_PERMIT;
-    uPnPFilter.weight.type = FWP_UINT8;
-    uPnPFilter.weight.uint8 = 15;
+    uPnPFilter.weight.type = FWP_UINT64;
+    uPnPFilter.weight.uint64 = &uPnPWeight;
 
     result = FwpmFilterAdd0(engine, &uPnPFilter, NULL, NULL);
 
@@ -702,6 +842,7 @@ DWORD Provider::AddFilters(
     }
 
     wchar_t zeroName[64] = L"VPNFirewall zero";
+    UINT64 zeroWeight = weight--;
     FWPM_FILTER0 zeroFilter;
     memset(&zeroFilter, 0, sizeof(zeroFilter));
     zeroFilter.displayData.name = zeroName;
@@ -711,8 +852,8 @@ DWORD Provider::AddFilters(
     zeroFilter.layerKey = FWPM_LAYER_OUTBOUND_TRANSPORT_V4;
     zeroFilter.numFilterConditions = 5;
     zeroFilter.action.type = FWP_ACTION_PERMIT;
-    zeroFilter.weight.type = FWP_UINT8;
-    zeroFilter.weight.uint8 = 15;
+    zeroFilter.weight.type = FWP_UINT64;
+    zeroFilter.weight.uint64 = &zeroWeight;
 
     result = FwpmFilterAdd0(engine, &zeroFilter, NULL, NULL);
 
@@ -728,6 +869,7 @@ DWORD Provider::AddFilters(
     }
 
     wchar_t loopbackName[64] = L"VPNFirewall loopback";
+    UINT64 loopbackWeight = weight--;
     FWPM_FILTER0 loopbackFilter;
     memset(&loopbackFilter, 0, sizeof(loopbackFilter));
     loopbackFilter.displayData.name = loopbackName;
@@ -737,8 +879,8 @@ DWORD Provider::AddFilters(
     loopbackFilter.layerKey = FWPM_LAYER_OUTBOUND_TRANSPORT_V4;
     loopbackFilter.numFilterConditions = 1;
     loopbackFilter.action.type = FWP_ACTION_PERMIT;
-    loopbackFilter.weight.type = FWP_UINT8;
-    loopbackFilter.weight.uint8 = 15;
+    loopbackFilter.weight.type = FWP_UINT64;
+    loopbackFilter.weight.uint64 = &loopbackWeight;
 
     result = FwpmFilterAdd0(engine, &loopbackFilter, NULL, NULL);
 
@@ -754,6 +896,7 @@ DWORD Provider::AddFilters(
     }
 
     wchar_t multicastName[64] = L"VPNFirewall multicast";
+    UINT64 multicastWeight = weight--;
     FWPM_FILTER0 multicastFilter;
     memset(&multicastFilter, 0, sizeof(multicastFilter));
     multicastFilter.displayData.name = multicastName;
@@ -763,8 +906,8 @@ DWORD Provider::AddFilters(
     multicastFilter.layerKey = FWPM_LAYER_OUTBOUND_TRANSPORT_V4;
     multicastFilter.numFilterConditions = 2;
     multicastFilter.action.type = FWP_ACTION_PERMIT;
-    multicastFilter.weight.type = FWP_UINT8;
-    multicastFilter.weight.uint8 = 15;
+    multicastFilter.weight.type = FWP_UINT64;
+    multicastFilter.weight.uint64 = &multicastWeight;
 
     result = FwpmFilterAdd0(engine, &multicastFilter, NULL, NULL);
 
@@ -780,6 +923,7 @@ DWORD Provider::AddFilters(
     }
 
     wchar_t localName[64] = L"VPNFirewall local";
+    UINT64 localWeight = weight--;
     FWPM_FILTER0 localFilter;
     memset(&localFilter, 0, sizeof(localFilter));
     localFilter.displayData.name = localName;
@@ -789,8 +933,8 @@ DWORD Provider::AddFilters(
     localFilter.layerKey = FWPM_LAYER_OUTBOUND_TRANSPORT_V4;
     localFilter.numFilterConditions = 2;
     localFilter.action.type = FWP_ACTION_PERMIT;
-    localFilter.weight.type = FWP_UINT8;
-    localFilter.weight.uint8 = 15;
+    localFilter.weight.type = FWP_UINT64;
+    localFilter.weight.uint64 = &localWeight;
 
     result = FwpmFilterAdd0(engine, &localFilter, NULL, NULL);
 
@@ -806,6 +950,7 @@ DWORD Provider::AddFilters(
     }
 
     wchar_t vpnTunnelName[64] = L"VPNFirewall vpnTunnel";
+    UINT64 vpnTunnelWeight = weight--;
     FWPM_FILTER0 vpnTunnelFilter;
     memset(&vpnTunnelFilter, 0, sizeof(vpnTunnelFilter));
     vpnTunnelFilter.displayData.name = vpnTunnelName;
@@ -815,8 +960,8 @@ DWORD Provider::AddFilters(
     vpnTunnelFilter.layerKey = FWPM_LAYER_OUTBOUND_TRANSPORT_V4;
     vpnTunnelFilter.numFilterConditions = 1;
     vpnTunnelFilter.action.type = FWP_ACTION_PERMIT;
-    vpnTunnelFilter.weight.type = FWP_UINT8;
-    vpnTunnelFilter.weight.uint8 = 15;
+    vpnTunnelFilter.weight.type = FWP_UINT64;
+    vpnTunnelFilter.weight.uint64 = &vpnTunnelWeight;
 
     result = FwpmFilterAdd0(engine, &vpnTunnelFilter, NULL, NULL);
 
@@ -832,6 +977,7 @@ DWORD Provider::AddFilters(
     }
 
     wchar_t vpnConnectionName[64] = L"VPNFirewall vpnConnection";
+    UINT64 vpnConnectionWeight = weight--;
     FWPM_FILTER0 vpnConnectionFilter;
     memset(&vpnConnectionFilter, 0, sizeof(vpnConnectionFilter));    
     vpnConnectionFilter.displayData.name = vpnConnectionName;
@@ -841,8 +987,8 @@ DWORD Provider::AddFilters(
     vpnConnectionFilter.layerKey = FWPM_LAYER_OUTBOUND_TRANSPORT_V4;
     vpnConnectionFilter.numFilterConditions = 3;
     vpnConnectionFilter.action.type = FWP_ACTION_PERMIT;
-    vpnConnectionFilter.weight.type = FWP_UINT8;
-    vpnConnectionFilter.weight.uint8 = 15;
+    vpnConnectionFilter.weight.type = FWP_UINT64;
+    vpnConnectionFilter.weight.uint64 = &vpnConnectionWeight;
 
     result = FwpmFilterAdd0(engine, &vpnConnectionFilter, NULL, NULL);
     
@@ -858,6 +1004,7 @@ DWORD Provider::AddFilters(
     }
 
     wchar_t dnsPrimaryName[64] = L"VPNFirewall dnsPrimary";
+    UINT64 dnsPrimaryWeight = weight--;
     FWPM_FILTER0 dnsPrimaryFilter;
     memset(&dnsPrimaryFilter, 0, sizeof(dnsPrimaryFilter));
     dnsPrimaryFilter.displayData.name = dnsPrimaryName;
@@ -867,8 +1014,8 @@ DWORD Provider::AddFilters(
     dnsPrimaryFilter.layerKey = FWPM_LAYER_OUTBOUND_TRANSPORT_V4;
     dnsPrimaryFilter.numFilterConditions = 3;
     dnsPrimaryFilter.action.type = FWP_ACTION_PERMIT;
-    dnsPrimaryFilter.weight.type = FWP_UINT8;
-    dnsPrimaryFilter.weight.uint8 = 15;
+    dnsPrimaryFilter.weight.type = FWP_UINT64;
+    dnsPrimaryFilter.weight.uint64 = &dnsPrimaryWeight;
 
     result = FwpmFilterAdd0(engine, &dnsPrimaryFilter, NULL, NULL);
 
@@ -884,6 +1031,7 @@ DWORD Provider::AddFilters(
     }
 
     wchar_t dnsSecondaryName[64] = L"VPNFirewall dnsSecondary";
+    UINT64 dnsSecondaryWeight = weight--;
     FWPM_FILTER0 dnsSecondaryFilter;
     memset(&dnsSecondaryFilter, 0, sizeof(dnsSecondaryFilter));
     dnsSecondaryFilter.displayData.name = dnsSecondaryName;
@@ -893,8 +1041,8 @@ DWORD Provider::AddFilters(
     dnsSecondaryFilter.layerKey = FWPM_LAYER_OUTBOUND_TRANSPORT_V4;
     dnsSecondaryFilter.numFilterConditions = 3;
     dnsSecondaryFilter.action.type = FWP_ACTION_PERMIT;
-    dnsSecondaryFilter.weight.type = FWP_UINT8;
-    dnsSecondaryFilter.weight.uint8 = 15;
+    dnsSecondaryFilter.weight.type = FWP_UINT64;
+    dnsSecondaryFilter.weight.uint64 = &dnsSecondaryWeight;
 
     result = FwpmFilterAdd0(engine, &dnsSecondaryFilter, NULL, NULL);
 
@@ -910,6 +1058,7 @@ DWORD Provider::AddFilters(
     }
 
     wchar_t sshName[64] = L"VPNFirewall ssh";
+    UINT64 sshWeight = weight--;
     FWPM_FILTER0 sshFilter;
     memset(&sshFilter, 0, sizeof(sshFilter));
     sshFilter.displayData.name = sshName;
@@ -919,8 +1068,8 @@ DWORD Provider::AddFilters(
     sshFilter.layerKey = FWPM_LAYER_OUTBOUND_TRANSPORT_V4;
     sshFilter.numFilterConditions = 3;
     sshFilter.action.type = FWP_ACTION_PERMIT;
-    sshFilter.weight.type = FWP_UINT8;
-    sshFilter.weight.uint8 = 15;
+    sshFilter.weight.type = FWP_UINT64;
+    sshFilter.weight.uint64 = &sshWeight;
 
     result = FwpmFilterAdd0(engine, &sshFilter, NULL, NULL);
 
@@ -936,6 +1085,7 @@ DWORD Provider::AddFilters(
     }
 
     wchar_t blockName[64] = L"VPNFirewall block";
+    UINT64 blockWeight = weight--;
     FWPM_FILTER0 blockFilter;
     memset(&blockFilter, 0, sizeof(blockFilter));
     blockFilter.displayData.name = blockName;
@@ -945,8 +1095,8 @@ DWORD Provider::AddFilters(
     blockFilter.layerKey = FWPM_LAYER_OUTBOUND_TRANSPORT_V4;
     blockFilter.numFilterConditions = 1;
     blockFilter.action.type = FWP_ACTION_BLOCK;
-    blockFilter.weight.type = FWP_UINT8;
-    blockFilter.weight.uint8 = 14;
+    blockFilter.weight.type = FWP_UINT64;
+    blockFilter.weight.uint64 = &blockWeight;
 
     result = FwpmFilterAdd0(engine, &blockFilter, NULL, NULL);
 
@@ -1032,33 +1182,4 @@ void Provider::PrintMask16(const std::string& prefix) {
             log_error(ss.str(), ERROR_SUCCESS);
         }
     }
-}
-
-HANDLE Provider::RandomHandle() {
-    HCRYPTPROV hProv;
-    DWORD dwLen = 8; // Number of bytes to generate
-    BYTE pbBuffer[8];
-
-    // Acquire a cryptographic service provider
-    if (!CryptAcquireContext(&hProv, NULL, NULL, PROV_RSA_FULL, CRYPT_NEWKEYSET)) {
-        // Handle error
-        return 0;
-    }
-
-    // Generate random bytes
-    if (!CryptGenRandom(hProv, dwLen, pbBuffer)) {
-        // Handle error
-        CryptReleaseContext(hProv, 0);
-        return 0;
-    }
-
-    // Use the generated random bytes as a handle (example)
-    HANDLE randomHandle = (HANDLE)pbBuffer;
-
-    // ... (Use the randomHandle)
-
-    // Release the cryptographic service provider
-    CryptReleaseContext(hProv, 0);
-
-    return randomHandle;
 }

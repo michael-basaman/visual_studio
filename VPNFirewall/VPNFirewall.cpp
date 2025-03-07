@@ -5,11 +5,9 @@
 #include "combaseapi.h"
 #include "VPNFirewall.h"
 #include "Provider.h"
-#include <wincrypt.h>
 
 #include <fstream>
-
-
+#include <sstream>
 
 #define MAX_LOADSTRING 100
 
@@ -23,6 +21,15 @@ ATOM                MyRegisterClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
+
+HMENU installButtonHandle = (HMENU)0xFFFF1;
+HMENU uninstallButtonHandle = (HMENU)0xFFFF2;
+HMENU listViewHandle = (HMENU)0xFFFF3;
+
+HWND hWnd = 0;
+HWND installButton = 0;
+HWND uninstallButton = 0;
+HWND hWndListView = 0;
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                      _In_opt_ HINSTANCE hPrevInstance,
@@ -123,6 +130,125 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
     return RegisterClassExW(&wcex);
 }
 
+LPWSTR ConvertToLPWSTR(const char* charArray) {
+    int length = MultiByteToWideChar(CP_UTF8, 0, charArray, -1, nullptr, 0);
+    LPWSTR wideCharArray = new wchar_t[length];
+    MultiByteToWideChar(CP_UTF8, 0, charArray, -1, wideCharArray, length);
+    return wideCharArray;
+}
+
+int CALLBACK CompareFunc(LPARAM lParam1, LPARAM lParam2, LPARAM lParamSort) {
+    HWND hWndList = (HWND)lParamSort;
+
+    LVITEM item1 = { 0 }, item2 = { 0 };
+    wchar_t text1[256], text2[256];
+    memset(text1, 0, 256);
+    memset(text2, 0, 256);
+
+    item1.mask = LVIF_TEXT;
+    item1.iItem = lParam1; // item index is stored in lParam
+    item1.iSubItem = 0;
+    item1.pszText = text1;
+    item1.cchTextMax = sizeof(text1);
+    ListView_GetItem(hWndList, &item1);
+
+    item2.mask = LVIF_TEXT;
+    item2.iItem = lParam2;
+    item2.iSubItem = 0;
+    item2.pszText = text2;
+    item2.cchTextMax = sizeof(text2);
+    ListView_GetItem(hWndList, &item2);
+
+    char* endptr; // Pointer to store the address of the first invalid character
+
+    std::wstring wtext1(text1);
+    std::wstring wtext2(text2);
+
+    std::string stext1(wtext1.begin(), wtext1.end());
+    std::string stext2(wtext2.begin(), wtext2.end());
+
+    uint64_t result1 = std::strtoull(stext1.c_str(), &endptr, 10);
+    uint64_t result2 = std::strtoull(stext2.c_str(), &endptr, 10);
+
+    if (result1 == result2) {
+        return 0;
+    }
+    else if (result1 > result2) {
+        return 1;
+    }
+    else {
+        return -1;
+    }
+}
+
+BOOL RefreshFilterDisplay() {
+    if (!hWnd)
+    {
+        return FALSE;
+    }
+
+    Provider provider;
+    std::list<FilterInfo> filters = provider.GetFilters();    
+
+    if (filters.size() == 1 && filters.begin()->isDummy) {
+        provider.log_error("Could not load filters", ERROR_SUCCESS);
+
+        if (uninstallButton) {
+            EnableWindow(uninstallButton, false);
+        }
+
+        if (installButton) {
+            EnableWindow(installButton, false);
+        }
+
+        return FALSE;
+    }
+
+    ListView_DeleteAllItems(hWndListView);
+
+    LVITEM lv;
+    lv.iSubItem = 0;
+    lv.iItem = 0;
+    lv.state = 0;
+    lv.stateMask = 0;
+    lv.iSubItem = 0;
+
+    filters.sort([](const FilterInfo& a, const FilterInfo& b) { return a.effectiveWeight < b.effectiveWeight; });
+
+    for (std::list<FilterInfo>::const_iterator filter = filters.begin(); filter != filters.end(); ++filter) {
+        LPWSTR weightPtr = ConvertToLPWSTR(filter->weight.c_str());
+        LPWSTR actionPtr = ConvertToLPWSTR(filter->action.c_str());
+        LPWSTR namePtr = ConvertToLPWSTR(filter->name.c_str());
+        LPWSTR filterKeyPtr = ConvertToLPWSTR(filter->guid.c_str());
+
+        ListView_InsertItem(hWndListView, &lv);
+        ListView_SetItemText(hWndListView, 0, 0, weightPtr);
+        ListView_SetItemText(hWndListView, 0, 1, actionPtr);
+        ListView_SetItemText(hWndListView, 0, 2, namePtr); // filter->displayData.name);
+        ListView_SetItemText(hWndListView, 0, 3, filterKeyPtr);
+
+        delete[] weightPtr;
+        delete[] actionPtr;
+        delete[] namePtr;
+        delete[] filterKeyPtr;
+    }
+
+    //ListView_SortItems(hWndListView, CompareFunc, hWndListView);
+
+    if (filters.size() == 0) {
+        if (installButton) {
+            EnableWindow(installButton, true);
+        }
+    }
+    else {
+        if (uninstallButton) {
+            EnableWindow(uninstallButton, true);
+        }
+    }
+
+    return TRUE;
+}
+
 //
 //   FUNCTION: InitInstance(HINSTANCE, int)
 //
@@ -135,46 +261,105 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 //
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
-   hInst = hInstance; // Store instance handle in our global variable
+    hInst = hInstance; // Store instance handle in our global variable
 
-   HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-      CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
+    hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
+        CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
 
-   if (!hWnd)
-   {
-      return FALSE;
-   }
+    if (!hWnd)
+    {
+        return FALSE;
+    }
 
-   HWND installButton = CreateWindow(
-       L"BUTTON",
-       L"Install",      // Button text 
-       WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
-       200,         // x position 
-       200,         // y position 
-       120,        // Button width
-       40,        // Button height
-       hWnd,     // Parent window
-       NULL,       // No menu.
-       (HINSTANCE)GetWindowLongPtr(hWnd, GWLP_HINSTANCE),
-       NULL);
+    if ((UINT64)installButtonHandle < 1000 || (UINT64)uninstallButtonHandle < 1000) {
+        Provider provider;
+        provider.log_error("Could not create button handles", ERROR_SUCCESS);
+        return FALSE;
+    }
 
-   HWND uninstallButton = CreateWindow(
-       L"BUTTON",
-       L"Uninstall",      // Button text 
-       WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
-       340,         // x position 
-       200,         // y position 
-       120,        // Button width
-       40,        // Button height
-       hWnd,     // Parent window
-       NULL,       // No menu.
-       (HINSTANCE)GetWindowLongPtr(hWnd, GWLP_HINSTANCE),
-       NULL);
+    RECT rcClient;                       // The parent window's client area.
 
-   ShowWindow(hWnd, nCmdShow);
-   UpdateWindow(hWnd);
+    GetClientRect(hWnd, &rcClient);
 
-   return TRUE;
+    installButton = CreateWindow(
+        L"BUTTON",
+        L"Install",      // Button text 
+        WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
+        (rcClient.right - rcClient.left) / 2 - 130,         // x position 
+        rcClient.bottom - rcClient.top - 60, // y position 
+        120,        // Button width
+        40,        // Button height
+        hWnd,     // Parent window
+        installButtonHandle,       // No menu.
+        (HINSTANCE)GetWindowLongPtr(hWnd, GWLP_HINSTANCE),
+        NULL);
+
+    uninstallButton = CreateWindow(
+        L"BUTTON",
+        L"Uninstall",      // Button text 
+        WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
+        (rcClient.right - rcClient.left) / 2 + 10,         // x position 
+        rcClient.bottom - rcClient.top - 60, // y position 
+        120,        // Button width
+        40,        // Button height
+        hWnd,     // Parent window
+        uninstallButtonHandle,       // No menu.
+        (HINSTANCE)GetWindowLongPtr(hWnd, GWLP_HINSTANCE),
+        NULL);
+
+    INITCOMMONCONTROLSEX icex;
+    icex.dwICC = ICC_LISTVIEW_CLASSES;
+    InitCommonControlsEx(&icex);
+
+    hWndListView = CreateWindow(WC_LISTVIEW,
+        L"",
+        WS_CHILD | WS_VISIBLE | WS_BORDER | LVS_REPORT | LVS_SHOWSELALWAYS | LVS_EX_GRIDLINES | LVS_EDITLABELS,
+        0, 0,
+        rcClient.right - rcClient.left,
+        rcClient.bottom - rcClient.top - 80,
+        hWnd,
+        listViewHandle,
+        (HINSTANCE)GetWindowLongPtr(hWnd, GWLP_HINSTANCE),
+        NULL);
+
+    LPWSTR str1 = const_cast<wchar_t*>(L"Weight");
+    LPWSTR str2 = const_cast<wchar_t*>(L"Action");
+    LPWSTR str3 = const_cast<wchar_t*>(L"Name");
+    LPWSTR str4 = const_cast<wchar_t*>(L"Guid");
+
+    LVCOLUMN lvc;
+    lvc.mask = LVCF_FMT | LVCF_WIDTH | LVCF_TEXT | LVCF_SUBITEM;
+    lvc.fmt = LVCFMT_LEFT;
+    
+    lvc.iSubItem = 0;
+    lvc.cx = 140;
+    lvc.pszText = str1;
+    ListView_InsertColumn(hWndListView, 0, &lvc);
+
+    lvc.iSubItem = 1;
+    lvc.cx = 60;
+    lvc.pszText = str2;
+    ListView_InsertColumn(hWndListView, 1, &lvc);
+
+    lvc.iSubItem = 2;
+    lvc.cx = 200;
+    lvc.pszText = str3;
+    ListView_InsertColumn(hWndListView, 2, &lvc);
+
+    lvc.iSubItem = 3;
+    lvc.cx = 280;
+    lvc.pszText = str4;
+    ListView_InsertColumn(hWndListView, 3, &lvc);
+
+    EnableWindow(installButton, false);
+    EnableWindow(uninstallButton, false);
+
+    RefreshFilterDisplay();
+
+    ShowWindow(hWnd, nCmdShow);
+    UpdateWindow(hWnd);
+
+    return TRUE;
 }
 
 //
@@ -194,17 +379,42 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_COMMAND:
         {
             int wmId = LOWORD(wParam);
-            // Parse the menu selections:
-            switch (wmId)
-            {
-            case IDM_ABOUT:
-                DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
-                break;
-            case IDM_EXIT:
-                DestroyWindow(hWnd);
-                break;
-            default:
-                return DefWindowProc(hWnd, message, wParam, lParam);
+
+            if (LOWORD(wParam) == (WORD) installButtonHandle && HIWORD(wParam) == BN_CLICKED) {
+                if (installButton) {
+                    EnableWindow(installButton, false);
+                }
+
+                Provider provider;
+                provider.log_error("install button clicked", ERROR_SUCCESS);
+
+                DWORD result = provider.Install();
+
+                RefreshFilterDisplay();
+            } else if (LOWORD(wParam) == (WORD)uninstallButtonHandle && HIWORD(wParam) == BN_CLICKED) {
+                if (uninstallButton) {
+                    EnableWindow(uninstallButton, false);
+                }
+
+                Provider provider;
+                provider.log_error("uninstall button clicked", ERROR_SUCCESS);
+
+                DWORD result = provider.Uninstall();
+
+                RefreshFilterDisplay();
+            } else {
+                // Parse the menu selections:
+                switch (wmId)
+                {
+                case IDM_ABOUT:
+                    DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
+                    break;
+                case IDM_EXIT:
+                    DestroyWindow(hWnd);
+                    break;
+                default:
+                    return DefWindowProc(hWnd, message, wParam, lParam);
+                }
             }
         }
         break;
