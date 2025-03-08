@@ -221,16 +221,34 @@ BOOL RefreshFilterDisplay() {
         LPWSTR namePtr = ConvertToLPWSTR(filter->name.c_str());
         LPWSTR filterKeyPtr = ConvertToLPWSTR(filter->guid.c_str());
 
+        LPWSTR remoteAddressPtr = ConvertToLPWSTR(filter->remote_address.c_str());
+        LPWSTR remotePortPtr = ConvertToLPWSTR(filter->remote_port.c_str());
+        LPWSTR localAddressPtr = ConvertToLPWSTR(filter->local_address.c_str());
+        LPWSTR localPortPtr = ConvertToLPWSTR(filter->local_port.c_str());
+        LPWSTR protocolPtr = ConvertToLPWSTR(filter->protocol.c_str());
+
         ListView_InsertItem(hWndListView, &lv);
         ListView_SetItemText(hWndListView, 0, 0, weightPtr);
         ListView_SetItemText(hWndListView, 0, 1, actionPtr);
         ListView_SetItemText(hWndListView, 0, 2, namePtr); // filter->displayData.name);
         ListView_SetItemText(hWndListView, 0, 3, filterKeyPtr);
 
+        ListView_SetItemText(hWndListView, 0, 4, protocolPtr);
+        ListView_SetItemText(hWndListView, 0, 5, localAddressPtr);
+        ListView_SetItemText(hWndListView, 0, 6, localPortPtr);
+        ListView_SetItemText(hWndListView, 0, 7, remoteAddressPtr);
+        ListView_SetItemText(hWndListView, 0, 8, remotePortPtr);        
+
         delete[] weightPtr;
         delete[] actionPtr;
         delete[] namePtr;
         delete[] filterKeyPtr;
+
+        delete[] remoteAddressPtr;
+        delete[] remotePortPtr;
+        delete[] localAddressPtr;
+        delete[] localPortPtr;
+        delete[] protocolPtr;
     }
 
     //ListView_SortItems(hWndListView, CompareFunc, hWndListView);
@@ -327,6 +345,12 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     LPWSTR str3 = const_cast<wchar_t*>(L"Name");
     LPWSTR str4 = const_cast<wchar_t*>(L"Guid");
 
+    LPWSTR str5 = const_cast<wchar_t*>(L"Proto");
+    LPWSTR str6 = const_cast<wchar_t*>(L"Local");
+    LPWSTR str7 = const_cast<wchar_t*>(L"Port");
+    LPWSTR str8 = const_cast<wchar_t*>(L"Remote");
+    LPWSTR str9 = const_cast<wchar_t*>(L"Port");    
+
     LVCOLUMN lvc;
     lvc.mask = LVCF_FMT | LVCF_WIDTH | LVCF_TEXT | LVCF_SUBITEM;
     lvc.fmt = LVCFMT_LEFT;
@@ -350,6 +374,29 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     lvc.cx = 280;
     lvc.pszText = str4;
     ListView_InsertColumn(hWndListView, 3, &lvc);
+
+    lvc.iSubItem = 4;
+    lvc.cx = 60;
+    lvc.pszText = str5;
+    ListView_InsertColumn(hWndListView, 4, &lvc);
+
+    lvc.iSubItem = 5;
+    lvc.cx = 120;
+    lvc.pszText = str6;
+    ListView_InsertColumn(hWndListView, 5, &lvc);
+    lvc.iSubItem = 6;
+    lvc.cx = 40;
+    lvc.pszText = str7;
+    ListView_InsertColumn(hWndListView, 6, &lvc);
+    lvc.iSubItem = 7;
+    lvc.cx = 120;
+    lvc.pszText = str8;
+    ListView_InsertColumn(hWndListView, 7, &lvc);
+
+    lvc.iSubItem = 8;
+    lvc.cx = 40;
+    lvc.pszText = str9;
+    ListView_InsertColumn(hWndListView, 8, &lvc);
 
     EnableWindow(installButton, false);
     EnableWindow(uninstallButton, false);

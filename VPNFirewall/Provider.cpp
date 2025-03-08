@@ -168,7 +168,7 @@ DWORD Provider::Install(
 std::list<FilterInfo> Provider::GetFilters() {
     std::list<FilterInfo> ret;
 
-    ret.push_back(FilterInfo("", "", "", 0, true));
+    ret.push_back(FilterInfo("", "", "", 0, true, "", "", "", "", ""));
 
     if (!initialized) {
         log_error("GetFilters() not initialized", ERROR_SUCCESS);
@@ -272,7 +272,66 @@ std::list<FilterInfo> Provider::GetFilters() {
 
                 UINT64 weight = *(entries[i]->effectiveWeight.uint64);
 
-                ret.push_back(FilterInfo(filterKeyString, ssAction.str(), narrowString, weight, false));
+                std::string remote_address;
+                std::string remote_port;
+                std::string local_address;
+                std::string local_port;
+                std::string protocol;
+
+                for (int j = 0; j < entries[i]->numFilterConditions; j++) {
+                    FWPM_FILTER_CONDITION0 condition = entries[i]->filterCondition[j];
+
+                    if (condition.matchType == FWP_MATCH_EQUAL) {
+                        if (memcmp(&(condition.fieldKey), &FWPM_CONDITION_IP_REMOTE_ADDRESS, sizeof(GUID)) == 0) {
+                            remote_address = uint32_to_ip(condition.conditionValue.uint32);
+                        }
+                        else if (memcmp(&(condition.fieldKey), &FWPM_CONDITION_IP_LOCAL_ADDRESS, sizeof(GUID)) == 0) {
+                            local_address = uint32_to_ip(condition.conditionValue.uint32);
+                        }
+                        else if (memcmp(&(condition.fieldKey), &FWPM_CONDITION_IP_REMOTE_PORT, sizeof(GUID)) == 0) {
+                            remote_port = std::to_string(condition.conditionValue.uint16);
+                        }
+                        else if (memcmp(&(condition.fieldKey), &FWPM_CONDITION_IP_LOCAL_PORT, sizeof(GUID)) == 0) {
+                            local_port = std::to_string(condition.conditionValue.uint16);
+                        }
+                        else if (memcmp(&(condition.fieldKey), &FWPM_CONDITION_IP_PROTOCOL, sizeof(GUID)) == 0) {
+                            if (condition.conditionValue.uint8 == IPPROTO_TCP) {
+                                protocol = "TCP";
+                            }
+                            else if (condition.conditionValue.uint8 == IPPROTO_UDP) {
+                                protocol = "UDP";
+                            }
+                        }
+                    }
+                    else if (condition.matchType == FWP_MATCH_RANGE) {
+                        if (memcmp(&(condition.fieldKey), &FWPM_CONDITION_IP_REMOTE_ADDRESS, sizeof(GUID)) == 0) {
+                            remote_address = range_to_ip(condition.conditionValue.rangeValue->valueLow.uint32, condition.conditionValue.rangeValue->valueHigh.uint32);
+                        }
+                        else if (memcmp(&(condition.fieldKey), &FWPM_CONDITION_IP_LOCAL_ADDRESS, sizeof(GUID)) == 0) {
+                            local_address = range_to_ip(condition.conditionValue.rangeValue->valueLow.uint32, condition.conditionValue.rangeValue->valueHigh.uint32);
+                        }
+                    }
+                    else if (condition.matchType == FWP_MATCH_NOT_EQUAL) {
+                        if (memcmp(&(condition.fieldKey), &FWPM_CONDITION_IP_REMOTE_ADDRESS, sizeof(GUID)) == 0) {
+                            remote_address = "x.x.x.x";
+                        }
+                        else if (memcmp(&(condition.fieldKey), &FWPM_CONDITION_IP_LOCAL_ADDRESS, sizeof(GUID)) == 0) {
+                            local_address = "x.x.x.x";
+                        }
+                        else if (memcmp(&(condition.fieldKey), &FWPM_CONDITION_IP_REMOTE_PORT, sizeof(GUID)) == 0) {
+                            remote_port = "x";
+                        }
+                        else if (memcmp(&(condition.fieldKey), &FWPM_CONDITION_IP_LOCAL_PORT, sizeof(GUID)) == 0) {
+                            local_port = "x";
+                        }
+                        else if (memcmp(&(condition.fieldKey), &FWPM_CONDITION_IP_PROTOCOL, sizeof(GUID)) == 0) {
+                            protocol = "x";
+                        }
+                    }
+                }
+
+                ret.push_back(FilterInfo(filterKeyString, ssAction.str(), narrowString, weight, false,
+                        remote_address, remote_port, local_address, local_port, protocol));
             }
         }
     }
@@ -464,6 +523,106 @@ UINT32 Provider::ip_string_to_uint32(const std::string& ip_string) {
         return 0;
     }
     return ntohl(sa.sin_addr.s_addr);
+}
+
+std::string Provider::uint32_to_ip(UINT32 ip_int) {
+    char ip_str[INET_ADDRSTRLEN];
+    memset(ip_str, 0, INET_ADDRSTRLEN);
+
+    struct in_addr addr;
+    addr.s_addr = ip_int;
+
+    u_char* src = (u_char*)&addr;
+
+    static const char uint32_to_ip_fmt[] = "%u.%u.%u.%u";
+
+    snprintf(ip_str, INET_ADDRSTRLEN, uint32_to_ip_fmt, src[3], src[2], src[1], src[0]);
+    
+    /*if (inet_ntop(AF_INET, &addr, ip_str, INET_ADDRSTRLEN) == nullptr) {
+        return "";
+    */
+    
+    return ip_str;
+}
+
+std::string Provider::range_to_ip(UINT32 start, UINT32 end) {
+    bool am = false;
+    bool bm = false;
+    bool cm = false;
+    bool dm = false;
+
+    struct in_addr addr;
+    addr.s_addr = start;
+
+    u_char* src = (u_char*)&addr;
+
+    u_char a = src[3];
+    u_char b = src[2];
+    u_char c = src[1];
+    u_char d = src[0];
+
+    for (UINT32 i = start; i <= end; i++) {
+        addr.s_addr = i;
+
+        if (a != src[3]) {
+            am = true;
+        }
+        if (b != src[2]) {
+            bm = true;
+        }
+        if (c != src[1]) {
+            cm = true;
+        }
+        if (d != src[0]) {
+            dm = true;
+        }
+    }
+
+    char tmp[8];
+    static const char range_to_ip_fmt[] = "%u";
+
+    std::stringstream ss;
+
+    if (am) {
+        ss << "x";
+    }
+    else {
+        memset(tmp, 0, 8);
+        snprintf(tmp, 8, range_to_ip_fmt, a);
+        ss << tmp;
+    }
+    ss << ".";
+
+    if (bm) {
+        ss << "x";
+    }
+    else {
+        memset(tmp, 0, 8);
+        snprintf(tmp, 8, range_to_ip_fmt, b);
+        ss << tmp;
+    }
+    ss << ".";
+
+    if (cm) {
+        ss << "x";
+    }
+    else {
+        memset(tmp, 0, 8);
+        snprintf(tmp, 8, range_to_ip_fmt, c);
+        ss << tmp;
+    }
+    ss << ".";
+
+    if (dm) {
+        ss << "x";
+    }
+    else {
+        memset(tmp, 0, 8);
+        snprintf(tmp, 8, range_to_ip_fmt, d);
+        ss << tmp;
+    }
+
+    return ss.str();
 }
 
 DWORD Provider::AddFilters(

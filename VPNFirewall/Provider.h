@@ -22,12 +22,18 @@ subLayerKey: FC7F24D0-F50B-49EF-B366-F364022452D8
 */
 
 typedef struct FilterInfo {
-    FilterInfo(const std::string& guid, const std::string& action, const std::string& name, UINT64 effectiveWeight, bool isDummy) :
+    FilterInfo(const std::string& guid, const std::string& action, const std::string& name, UINT64 effectiveWeight, bool isDummy,
+        const std::string& remote_address, const std::string& remote_port, const std::string& local_address, const std::string& local_port, const std::string& protocol) :
             guid(guid),
             action(action),
             name(name),
             effectiveWeight(effectiveWeight),
-            isDummy(isDummy) {
+            isDummy(isDummy),
+            remote_address(remote_address),
+            remote_port(remote_port),
+            local_address(local_address),
+            local_port(local_port),
+            protocol(protocol) {
         std::stringstream ss;
         ss << effectiveWeight;
         weight = ss.str();
@@ -39,6 +45,13 @@ typedef struct FilterInfo {
     std::string name;
     UINT64 effectiveWeight;
     bool isDummy;
+
+    std::string remote_address;
+    std::string remote_port;
+    std::string local_address;
+    std::string local_port;
+    std::string protocol;
+
 } FilterInfo;
 
 class Provider {
@@ -51,6 +64,10 @@ private:
     bool loadGuidFromString(const wchar_t* guidString, GUID& guid);
 
     UINT32 ip_string_to_uint32(const std::string& ip_string);
+
+    std::string uint32_to_ip(UINT32 ip_int);
+
+    std::string range_to_ip(UINT32 start, UINT32 end);
 
     //void log_error(const std::string& error, DWORD errorMessageID);
 
