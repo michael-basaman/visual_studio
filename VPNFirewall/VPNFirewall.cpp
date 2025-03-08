@@ -42,9 +42,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     // TODO: Place code here.
 
     // Initialize global strings
-    LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
+    //LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
     LoadStringW(hInstance, IDC_VPNFIREWALL, szWindowClass, MAX_LOADSTRING);
     MyRegisterClass(hInstance);
+
+    wcscpy_s(szTitle, L"VPN Firewall");
 
     // Perform application initialization:
     if (!InitInstance (hInstance, nCmdShow))
@@ -216,7 +218,7 @@ BOOL RefreshFilterDisplay() {
     filters.sort([](const FilterInfo& a, const FilterInfo& b) { return a.effectiveWeight < b.effectiveWeight; });
 
     for (std::list<FilterInfo>::const_iterator filter = filters.begin(); filter != filters.end(); ++filter) {
-        LPWSTR weightPtr = ConvertToLPWSTR(filter->weight.c_str());
+        //LPWSTR weightPtr = ConvertToLPWSTR(filter->weight.c_str());
         LPWSTR actionPtr = ConvertToLPWSTR(filter->action.c_str());
         LPWSTR namePtr = ConvertToLPWSTR(filter->name.c_str());
         LPWSTR filterKeyPtr = ConvertToLPWSTR(filter->guid.c_str());
@@ -228,18 +230,18 @@ BOOL RefreshFilterDisplay() {
         LPWSTR protocolPtr = ConvertToLPWSTR(filter->protocol.c_str());
 
         ListView_InsertItem(hWndListView, &lv);
-        ListView_SetItemText(hWndListView, 0, 0, weightPtr);
-        ListView_SetItemText(hWndListView, 0, 1, actionPtr);
-        ListView_SetItemText(hWndListView, 0, 2, namePtr); // filter->displayData.name);
-        ListView_SetItemText(hWndListView, 0, 3, filterKeyPtr);
+        //ListView_SetItemText(hWndListView, 0, 0, weightPtr);
+        ListView_SetItemText(hWndListView, 0, 0, actionPtr);
+        ListView_SetItemText(hWndListView, 0, 1, namePtr);
+        ListView_SetItemText(hWndListView, 0, 2, filterKeyPtr);
 
-        ListView_SetItemText(hWndListView, 0, 4, protocolPtr);
-        ListView_SetItemText(hWndListView, 0, 5, localAddressPtr);
-        ListView_SetItemText(hWndListView, 0, 6, localPortPtr);
-        ListView_SetItemText(hWndListView, 0, 7, remoteAddressPtr);
-        ListView_SetItemText(hWndListView, 0, 8, remotePortPtr);        
+        ListView_SetItemText(hWndListView, 0, 3, protocolPtr);
+        ListView_SetItemText(hWndListView, 0, 4, localAddressPtr);
+        ListView_SetItemText(hWndListView, 0, 5, localPortPtr);
+        ListView_SetItemText(hWndListView, 0, 6, remoteAddressPtr);
+        ListView_SetItemText(hWndListView, 0, 7, remotePortPtr);        
 
-        delete[] weightPtr;
+        //delete[] weightPtr;
         delete[] actionPtr;
         delete[] namePtr;
         delete[] filterKeyPtr;
@@ -281,8 +283,14 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
     hInst = hInstance; // Store instance handle in our global variable
 
+    int screenWidth = GetSystemMetrics(SM_CXSCREEN);
+    int screenHeight = GetSystemMetrics(SM_CYSCREEN);
+
+    int windowWidth = 832;
+    int windowHeight = 468;
+
     hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-        CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
+        (screenWidth - windowWidth) / 2, (screenHeight - windowHeight) / 2, windowWidth, windowHeight, nullptr, nullptr, hInstance, nullptr);
 
     if (!hWnd)
     {
@@ -340,12 +348,12 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
         (HINSTANCE)GetWindowLongPtr(hWnd, GWLP_HINSTANCE),
         NULL);
 
-    LPWSTR str1 = const_cast<wchar_t*>(L"Weight");
+    // LPWSTR str1 = const_cast<wchar_t*>(L"Weight");
     LPWSTR str2 = const_cast<wchar_t*>(L"Action");
     LPWSTR str3 = const_cast<wchar_t*>(L"Name");
     LPWSTR str4 = const_cast<wchar_t*>(L"Guid");
 
-    LPWSTR str5 = const_cast<wchar_t*>(L"Proto");
+    LPWSTR str5 = const_cast<wchar_t*>(L"Protocol");
     LPWSTR str6 = const_cast<wchar_t*>(L"Local");
     LPWSTR str7 = const_cast<wchar_t*>(L"Port");
     LPWSTR str8 = const_cast<wchar_t*>(L"Remote");
@@ -355,48 +363,50 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
     lvc.mask = LVCF_FMT | LVCF_WIDTH | LVCF_TEXT | LVCF_SUBITEM;
     lvc.fmt = LVCFMT_LEFT;
     
-    lvc.iSubItem = 0;
+    /*lvc.iSubItem = 0;
     lvc.cx = 140;
     lvc.pszText = str1;
+    ListView_InsertColumn(hWndListView, 0, &lvc);*/
+
+    lvc.iSubItem = 0;
+    lvc.cx = 50;
+    lvc.pszText = str2;
     ListView_InsertColumn(hWndListView, 0, &lvc);
 
     lvc.iSubItem = 1;
-    lvc.cx = 60;
-    lvc.pszText = str2;
+    lvc.cx = 165;
+    lvc.pszText = str3;
     ListView_InsertColumn(hWndListView, 1, &lvc);
 
     lvc.iSubItem = 2;
-    lvc.cx = 200;
-    lvc.pszText = str3;
+    lvc.cx = 260;
+    lvc.pszText = str4;
     ListView_InsertColumn(hWndListView, 2, &lvc);
 
     lvc.iSubItem = 3;
-    lvc.cx = 280;
-    lvc.pszText = str4;
+    lvc.cx = 60;
+    lvc.pszText = str5;
     ListView_InsertColumn(hWndListView, 3, &lvc);
 
     lvc.iSubItem = 4;
-    lvc.cx = 60;
-    lvc.pszText = str5;
+    lvc.cx = 100;
+    lvc.pszText = str6;
     ListView_InsertColumn(hWndListView, 4, &lvc);
 
     lvc.iSubItem = 5;
-    lvc.cx = 120;
-    lvc.pszText = str6;
-    ListView_InsertColumn(hWndListView, 5, &lvc);
-    lvc.iSubItem = 6;
     lvc.cx = 40;
     lvc.pszText = str7;
-    ListView_InsertColumn(hWndListView, 6, &lvc);
-    lvc.iSubItem = 7;
-    lvc.cx = 120;
-    lvc.pszText = str8;
-    ListView_InsertColumn(hWndListView, 7, &lvc);
+    ListView_InsertColumn(hWndListView, 5, &lvc);
 
-    lvc.iSubItem = 8;
+    lvc.iSubItem = 6;
+    lvc.cx = 100;
+    lvc.pszText = str8;
+    ListView_InsertColumn(hWndListView, 6, &lvc);
+
+    lvc.iSubItem = 7;
     lvc.cx = 40;
     lvc.pszText = str9;
-    ListView_InsertColumn(hWndListView, 8, &lvc);
+    ListView_InsertColumn(hWndListView, 7, &lvc);
 
     EnableWindow(installButton, false);
     EnableWindow(uninstallButton, false);

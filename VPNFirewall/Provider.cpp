@@ -919,196 +919,7 @@ DWORD Provider::AddFilters(
 
     UINT64 weight = UINT64_MAX;
 
-    wchar_t anticirculatoryName[64] = L"VPNFirewall anticirculatory";
-    UINT64 anticirculatoryWeight = weight--;
-    FWPM_FILTER0 anticirculatoryFilter;
-    memset(&anticirculatoryFilter, 0, sizeof(anticirculatoryFilter));
-    anticirculatoryFilter.displayData.name = anticirculatoryName;
-    anticirculatoryFilter.providerKey = &providerKey;
-    anticirculatoryFilter.subLayerKey = subLayerKey;
-    anticirculatoryFilter.filterCondition = anticirculatoryConditions;
-    anticirculatoryFilter.layerKey = FWPM_LAYER_OUTBOUND_TRANSPORT_V4;
-    anticirculatoryFilter.numFilterConditions = 3;
-    anticirculatoryFilter.action.type = FWP_ACTION_PERMIT;
-    anticirculatoryFilter.weight.type = FWP_UINT64;
-    anticirculatoryFilter.weight.uint64 = &anticirculatoryWeight;
-
-    result = FwpmFilterAdd0(engine, &anticirculatoryFilter, NULL, NULL);
-
-    if (result != ERROR_SUCCESS) {
-        if (txnInProgress)
-        {
-            FwpmTransactionAbort0(engine);
-        }
-        LocalFree(sd);
-
-        log_error("AddFilters() FwpmFilterAdd0 0", result);
-        return result;
-    }
-
-    wchar_t wsDiscoveryName[64] = L"VPNFirewall wsDiscovery";
-    UINT64 wsDiscoveryWeight = weight--;
-    FWPM_FILTER0 wsDiscoveryFilter;
-    memset(&wsDiscoveryFilter, 0, sizeof(wsDiscoveryFilter));
-    wsDiscoveryFilter.displayData.name = wsDiscoveryName;
-    wsDiscoveryFilter.providerKey = &providerKey;
-    wsDiscoveryFilter.subLayerKey = subLayerKey;
-    wsDiscoveryFilter.filterCondition = wsDiscoveryConditions;
-    wsDiscoveryFilter.layerKey = FWPM_LAYER_OUTBOUND_TRANSPORT_V4;
-    wsDiscoveryFilter.numFilterConditions = 4;
-    wsDiscoveryFilter.action.type = FWP_ACTION_PERMIT;
-    wsDiscoveryFilter.weight.type = FWP_UINT64;
-    wsDiscoveryFilter.weight.uint64 = &wsDiscoveryWeight;
-
-    result = FwpmFilterAdd0(engine, &wsDiscoveryFilter, NULL, NULL);
-
-    if (result != ERROR_SUCCESS) {
-        if (txnInProgress)
-        {
-            FwpmTransactionAbort0(engine);
-        }
-        LocalFree(sd);
-
-        log_error("AddFilters() FwpmFilterAdd0 1", result);
-        return result;
-    }
-
-    wchar_t uPnPName[64] = L"VPNFirewall uPnP";
-    UINT64 uPnPWeight = weight--;
-    FWPM_FILTER0 uPnPFilter;
-    memset(&uPnPFilter, 0, sizeof(uPnPFilter));
-    uPnPFilter.displayData.name = uPnPName;
-    uPnPFilter.providerKey = &providerKey;
-    uPnPFilter.subLayerKey = subLayerKey;
-    uPnPFilter.filterCondition = uPnPConditions;
-    uPnPFilter.layerKey = FWPM_LAYER_OUTBOUND_TRANSPORT_V4;
-    uPnPFilter.numFilterConditions = 4;
-    uPnPFilter.action.type = FWP_ACTION_PERMIT;
-    uPnPFilter.weight.type = FWP_UINT64;
-    uPnPFilter.weight.uint64 = &uPnPWeight;
-
-    result = FwpmFilterAdd0(engine, &uPnPFilter, NULL, NULL);
-
-    if (result != ERROR_SUCCESS) {
-        if (txnInProgress)
-        {
-            FwpmTransactionAbort0(engine);
-        }
-        LocalFree(sd);
-
-        log_error("AddFilters() FwpmFilterAdd0 2", result);
-        return result;
-    }
-
-    wchar_t zeroName[64] = L"VPNFirewall zero";
-    UINT64 zeroWeight = weight--;
-    FWPM_FILTER0 zeroFilter;
-    memset(&zeroFilter, 0, sizeof(zeroFilter));
-    zeroFilter.displayData.name = zeroName;
-    zeroFilter.providerKey = &providerKey;
-    zeroFilter.subLayerKey = subLayerKey;
-    zeroFilter.filterCondition = zeroConditions;
-    zeroFilter.layerKey = FWPM_LAYER_OUTBOUND_TRANSPORT_V4;
-    zeroFilter.numFilterConditions = 5;
-    zeroFilter.action.type = FWP_ACTION_PERMIT;
-    zeroFilter.weight.type = FWP_UINT64;
-    zeroFilter.weight.uint64 = &zeroWeight;
-
-    result = FwpmFilterAdd0(engine, &zeroFilter, NULL, NULL);
-
-    if (result != ERROR_SUCCESS) {
-        if (txnInProgress)
-        {
-            FwpmTransactionAbort0(engine);
-        }
-        LocalFree(sd);
-
-        log_error("AddFilters() FwpmFilterAdd0 3", result);
-        return result;
-    }
-
-    wchar_t loopbackName[64] = L"VPNFirewall loopback";
-    UINT64 loopbackWeight = weight--;
-    FWPM_FILTER0 loopbackFilter;
-    memset(&loopbackFilter, 0, sizeof(loopbackFilter));
-    loopbackFilter.displayData.name = loopbackName;
-    loopbackFilter.providerKey = &providerKey;
-    loopbackFilter.subLayerKey = subLayerKey;
-    loopbackFilter.filterCondition = loopbackConditions;
-    loopbackFilter.layerKey = FWPM_LAYER_OUTBOUND_TRANSPORT_V4;
-    loopbackFilter.numFilterConditions = 1;
-    loopbackFilter.action.type = FWP_ACTION_PERMIT;
-    loopbackFilter.weight.type = FWP_UINT64;
-    loopbackFilter.weight.uint64 = &loopbackWeight;
-
-    result = FwpmFilterAdd0(engine, &loopbackFilter, NULL, NULL);
-
-    if (result != ERROR_SUCCESS) {
-        if (txnInProgress)
-        {
-            FwpmTransactionAbort0(engine);
-        }
-        LocalFree(sd);
-
-        log_error("AddFilters() FwpmFilterAdd0 4", result);
-        return result;
-    }
-
-    wchar_t multicastName[64] = L"VPNFirewall multicast";
-    UINT64 multicastWeight = weight--;
-    FWPM_FILTER0 multicastFilter;
-    memset(&multicastFilter, 0, sizeof(multicastFilter));
-    multicastFilter.displayData.name = multicastName;
-    multicastFilter.providerKey = &providerKey;
-    multicastFilter.subLayerKey = subLayerKey;
-    multicastFilter.filterCondition = multicastConditions;
-    multicastFilter.layerKey = FWPM_LAYER_OUTBOUND_TRANSPORT_V4;
-    multicastFilter.numFilterConditions = 2;
-    multicastFilter.action.type = FWP_ACTION_PERMIT;
-    multicastFilter.weight.type = FWP_UINT64;
-    multicastFilter.weight.uint64 = &multicastWeight;
-
-    result = FwpmFilterAdd0(engine, &multicastFilter, NULL, NULL);
-
-    if (result != ERROR_SUCCESS) {
-        if (txnInProgress)
-        {
-            FwpmTransactionAbort0(engine);
-        }
-        LocalFree(sd);
-
-        log_error("AddFilters() FwpmFilterAdd0 5", result);
-        return result;
-    }
-
-    wchar_t localName[64] = L"VPNFirewall local";
-    UINT64 localWeight = weight--;
-    FWPM_FILTER0 localFilter;
-    memset(&localFilter, 0, sizeof(localFilter));
-    localFilter.displayData.name = localName;
-    localFilter.providerKey = &providerKey;
-    localFilter.subLayerKey = subLayerKey;
-    localFilter.filterCondition = localConditions;
-    localFilter.layerKey = FWPM_LAYER_OUTBOUND_TRANSPORT_V4;
-    localFilter.numFilterConditions = 2;
-    localFilter.action.type = FWP_ACTION_PERMIT;
-    localFilter.weight.type = FWP_UINT64;
-    localFilter.weight.uint64 = &localWeight;
-
-    result = FwpmFilterAdd0(engine, &localFilter, NULL, NULL);
-
-    if (result != ERROR_SUCCESS) {
-        if (txnInProgress)
-        {
-            FwpmTransactionAbort0(engine);
-        }
-        LocalFree(sd);
-
-        log_error("AddFilters() FwpmFilterAdd0 6", result);
-        return result;
-    }
-
-    wchar_t vpnTunnelName[64] = L"VPNFirewall vpnTunnel";
+    wchar_t vpnTunnelName[64] = L"VPN Tunnel";
     UINT64 vpnTunnelWeight = weight--;
     FWPM_FILTER0 vpnTunnelFilter;
     memset(&vpnTunnelFilter, 0, sizeof(vpnTunnelFilter));
@@ -1135,34 +946,7 @@ DWORD Provider::AddFilters(
         return result;
     }
 
-    wchar_t vpnConnectionName[64] = L"VPNFirewall vpnConnection";
-    UINT64 vpnConnectionWeight = weight--;
-    FWPM_FILTER0 vpnConnectionFilter;
-    memset(&vpnConnectionFilter, 0, sizeof(vpnConnectionFilter));    
-    vpnConnectionFilter.displayData.name = vpnConnectionName;
-    vpnConnectionFilter.providerKey = &providerKey;
-    vpnConnectionFilter.subLayerKey = subLayerKey;
-    vpnConnectionFilter.filterCondition = vpnConnectionCondition;
-    vpnConnectionFilter.layerKey = FWPM_LAYER_OUTBOUND_TRANSPORT_V4;
-    vpnConnectionFilter.numFilterConditions = 3;
-    vpnConnectionFilter.action.type = FWP_ACTION_PERMIT;
-    vpnConnectionFilter.weight.type = FWP_UINT64;
-    vpnConnectionFilter.weight.uint64 = &vpnConnectionWeight;
-
-    result = FwpmFilterAdd0(engine, &vpnConnectionFilter, NULL, NULL);
-    
-    if (result != ERROR_SUCCESS) {
-        if (txnInProgress)
-        {
-            FwpmTransactionAbort0(engine);
-        }
-        LocalFree(sd);
-
-        log_error("AddFilters() FwpmFilterAdd0 8", result);
-        return result;
-    }
-
-    wchar_t dnsPrimaryName[64] = L"VPNFirewall dnsPrimary";
+    wchar_t dnsPrimaryName[64] = L"Primary DNS";
     UINT64 dnsPrimaryWeight = weight--;
     FWPM_FILTER0 dnsPrimaryFilter;
     memset(&dnsPrimaryFilter, 0, sizeof(dnsPrimaryFilter));
@@ -1189,7 +973,7 @@ DWORD Provider::AddFilters(
         return result;
     }
 
-    wchar_t dnsSecondaryName[64] = L"VPNFirewall dnsSecondary";
+    wchar_t dnsSecondaryName[64] = L"Secondary DNS";
     UINT64 dnsSecondaryWeight = weight--;
     FWPM_FILTER0 dnsSecondaryFilter;
     memset(&dnsSecondaryFilter, 0, sizeof(dnsSecondaryFilter));
@@ -1216,7 +1000,115 @@ DWORD Provider::AddFilters(
         return result;
     }
 
-    wchar_t sshName[64] = L"VPNFirewall ssh";
+    wchar_t localName[64] = L"Local Traffic";
+    UINT64 localWeight = weight--;
+    FWPM_FILTER0 localFilter;
+    memset(&localFilter, 0, sizeof(localFilter));
+    localFilter.displayData.name = localName;
+    localFilter.providerKey = &providerKey;
+    localFilter.subLayerKey = subLayerKey;
+    localFilter.filterCondition = localConditions;
+    localFilter.layerKey = FWPM_LAYER_OUTBOUND_TRANSPORT_V4;
+    localFilter.numFilterConditions = 2;
+    localFilter.action.type = FWP_ACTION_PERMIT;
+    localFilter.weight.type = FWP_UINT64;
+    localFilter.weight.uint64 = &localWeight;
+
+    result = FwpmFilterAdd0(engine, &localFilter, NULL, NULL);
+
+    if (result != ERROR_SUCCESS) {
+        if (txnInProgress)
+        {
+            FwpmTransactionAbort0(engine);
+        }
+        LocalFree(sd);
+
+        log_error("AddFilters() FwpmFilterAdd0 6", result);
+        return result;
+    }
+
+    wchar_t multicastName[64] = L"Multicast";
+    UINT64 multicastWeight = weight--;
+    FWPM_FILTER0 multicastFilter;
+    memset(&multicastFilter, 0, sizeof(multicastFilter));
+    multicastFilter.displayData.name = multicastName;
+    multicastFilter.providerKey = &providerKey;
+    multicastFilter.subLayerKey = subLayerKey;
+    multicastFilter.filterCondition = multicastConditions;
+    multicastFilter.layerKey = FWPM_LAYER_OUTBOUND_TRANSPORT_V4;
+    multicastFilter.numFilterConditions = 2;
+    multicastFilter.action.type = FWP_ACTION_PERMIT;
+    multicastFilter.weight.type = FWP_UINT64;
+    multicastFilter.weight.uint64 = &multicastWeight;
+
+    result = FwpmFilterAdd0(engine, &multicastFilter, NULL, NULL);
+
+    if (result != ERROR_SUCCESS) {
+        if (txnInProgress)
+        {
+            FwpmTransactionAbort0(engine);
+        }
+        LocalFree(sd);
+
+        log_error("AddFilters() FwpmFilterAdd0 5", result);
+        return result;
+    }
+
+    wchar_t loopbackName[64] = L"Loopback";
+    UINT64 loopbackWeight = weight--;
+    FWPM_FILTER0 loopbackFilter;
+    memset(&loopbackFilter, 0, sizeof(loopbackFilter));
+    loopbackFilter.displayData.name = loopbackName;
+    loopbackFilter.providerKey = &providerKey;
+    loopbackFilter.subLayerKey = subLayerKey;
+    loopbackFilter.filterCondition = loopbackConditions;
+    loopbackFilter.layerKey = FWPM_LAYER_OUTBOUND_TRANSPORT_V4;
+    loopbackFilter.numFilterConditions = 1;
+    loopbackFilter.action.type = FWP_ACTION_PERMIT;
+    loopbackFilter.weight.type = FWP_UINT64;
+    loopbackFilter.weight.uint64 = &loopbackWeight;
+
+    result = FwpmFilterAdd0(engine, &loopbackFilter, NULL, NULL);
+
+    if (result != ERROR_SUCCESS) {
+        if (txnInProgress)
+        {
+            FwpmTransactionAbort0(engine);
+        }
+        LocalFree(sd);
+
+        log_error("AddFilters() FwpmFilterAdd0 4", result);
+        return result;
+    }
+
+    wchar_t vpnConnectionName[64] = L"VPN Server";
+    UINT64 vpnConnectionWeight = weight--;
+    FWPM_FILTER0 vpnConnectionFilter;
+    memset(&vpnConnectionFilter, 0, sizeof(vpnConnectionFilter));
+    vpnConnectionFilter.displayData.name = vpnConnectionName;
+    vpnConnectionFilter.providerKey = &providerKey;
+    vpnConnectionFilter.subLayerKey = subLayerKey;
+    vpnConnectionFilter.filterCondition = vpnConnectionCondition;
+    vpnConnectionFilter.layerKey = FWPM_LAYER_OUTBOUND_TRANSPORT_V4;
+    vpnConnectionFilter.numFilterConditions = 3;
+    vpnConnectionFilter.action.type = FWP_ACTION_PERMIT;
+    vpnConnectionFilter.weight.type = FWP_UINT64;
+    vpnConnectionFilter.weight.uint64 = &vpnConnectionWeight;
+
+    result = FwpmFilterAdd0(engine, &vpnConnectionFilter, NULL, NULL);
+
+    if (result != ERROR_SUCCESS) {
+        if (txnInProgress)
+        {
+            FwpmTransactionAbort0(engine);
+        }
+        LocalFree(sd);
+
+        log_error("AddFilters() FwpmFilterAdd0 8", result);
+        return result;
+    }
+
+    wchar_t sshName[64] = L"SSH anticirculatory.com";
     UINT64 sshWeight = weight--;
     FWPM_FILTER0 sshFilter;
     memset(&sshFilter, 0, sizeof(sshFilter));
@@ -1243,7 +1135,115 @@ DWORD Provider::AddFilters(
         return result;
     }
 
-    wchar_t blockName[64] = L"VPNFirewall block";
+    wchar_t anticirculatoryName[64] = L"SSH m.anticirculatory.com";
+    UINT64 anticirculatoryWeight = weight--;
+    FWPM_FILTER0 anticirculatoryFilter;
+    memset(&anticirculatoryFilter, 0, sizeof(anticirculatoryFilter));
+    anticirculatoryFilter.displayData.name = anticirculatoryName;
+    anticirculatoryFilter.providerKey = &providerKey;
+    anticirculatoryFilter.subLayerKey = subLayerKey;
+    anticirculatoryFilter.filterCondition = anticirculatoryConditions;
+    anticirculatoryFilter.layerKey = FWPM_LAYER_OUTBOUND_TRANSPORT_V4;
+    anticirculatoryFilter.numFilterConditions = 3;
+    anticirculatoryFilter.action.type = FWP_ACTION_PERMIT;
+    anticirculatoryFilter.weight.type = FWP_UINT64;
+    anticirculatoryFilter.weight.uint64 = &anticirculatoryWeight;
+
+    result = FwpmFilterAdd0(engine, &anticirculatoryFilter, NULL, NULL);
+
+    if (result != ERROR_SUCCESS) {
+        if (txnInProgress)
+        {
+            FwpmTransactionAbort0(engine);
+        }
+        LocalFree(sd);
+
+        log_error("AddFilters() FwpmFilterAdd0 0", result);
+        return result;
+    }
+
+    wchar_t wsDiscoveryName[64] = L"WS-Discovery";
+    UINT64 wsDiscoveryWeight = weight--;
+    FWPM_FILTER0 wsDiscoveryFilter;
+    memset(&wsDiscoveryFilter, 0, sizeof(wsDiscoveryFilter));
+    wsDiscoveryFilter.displayData.name = wsDiscoveryName;
+    wsDiscoveryFilter.providerKey = &providerKey;
+    wsDiscoveryFilter.subLayerKey = subLayerKey;
+    wsDiscoveryFilter.filterCondition = wsDiscoveryConditions;
+    wsDiscoveryFilter.layerKey = FWPM_LAYER_OUTBOUND_TRANSPORT_V4;
+    wsDiscoveryFilter.numFilterConditions = 4;
+    wsDiscoveryFilter.action.type = FWP_ACTION_PERMIT;
+    wsDiscoveryFilter.weight.type = FWP_UINT64;
+    wsDiscoveryFilter.weight.uint64 = &wsDiscoveryWeight;
+
+    result = FwpmFilterAdd0(engine, &wsDiscoveryFilter, NULL, NULL);
+
+    if (result != ERROR_SUCCESS) {
+        if (txnInProgress)
+        {
+            FwpmTransactionAbort0(engine);
+        }
+        LocalFree(sd);
+
+        log_error("AddFilters() FwpmFilterAdd0 1", result);
+        return result;
+    }
+
+    wchar_t uPnPName[64] = L"UPnP";
+    UINT64 uPnPWeight = weight--;
+    FWPM_FILTER0 uPnPFilter;
+    memset(&uPnPFilter, 0, sizeof(uPnPFilter));
+    uPnPFilter.displayData.name = uPnPName;
+    uPnPFilter.providerKey = &providerKey;
+    uPnPFilter.subLayerKey = subLayerKey;
+    uPnPFilter.filterCondition = uPnPConditions;
+    uPnPFilter.layerKey = FWPM_LAYER_OUTBOUND_TRANSPORT_V4;
+    uPnPFilter.numFilterConditions = 4;
+    uPnPFilter.action.type = FWP_ACTION_PERMIT;
+    uPnPFilter.weight.type = FWP_UINT64;
+    uPnPFilter.weight.uint64 = &uPnPWeight;
+
+    result = FwpmFilterAdd0(engine, &uPnPFilter, NULL, NULL);
+
+    if (result != ERROR_SUCCESS) {
+        if (txnInProgress)
+        {
+            FwpmTransactionAbort0(engine);
+        }
+        LocalFree(sd);
+
+        log_error("AddFilters() FwpmFilterAdd0 2", result);
+        return result;
+    }
+
+    wchar_t zeroName[64] = L"DHCP";
+    UINT64 zeroWeight = weight--;
+    FWPM_FILTER0 zeroFilter;
+    memset(&zeroFilter, 0, sizeof(zeroFilter));
+    zeroFilter.displayData.name = zeroName;
+    zeroFilter.providerKey = &providerKey;
+    zeroFilter.subLayerKey = subLayerKey;
+    zeroFilter.filterCondition = zeroConditions;
+    zeroFilter.layerKey = FWPM_LAYER_OUTBOUND_TRANSPORT_V4;
+    zeroFilter.numFilterConditions = 5;
+    zeroFilter.action.type = FWP_ACTION_PERMIT;
+    zeroFilter.weight.type = FWP_UINT64;
+    zeroFilter.weight.uint64 = &zeroWeight;
+
+    result = FwpmFilterAdd0(engine, &zeroFilter, NULL, NULL);
+
+    if (result != ERROR_SUCCESS) {
+        if (txnInProgress)
+        {
+            FwpmTransactionAbort0(engine);
+        }
+        LocalFree(sd);
+
+        log_error("AddFilters() FwpmFilterAdd0 3", result);
+        return result;
+    }
+
+    wchar_t blockName[64] = L"Firewall";
     UINT64 blockWeight = weight--;
     FWPM_FILTER0 blockFilter;
     memset(&blockFilter, 0, sizeof(blockFilter));
