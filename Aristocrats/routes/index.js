@@ -18,9 +18,9 @@ router.get('/', async (req, res) => {
             select e1.ticker, e1.price_close, a.homepage_url, a.name
             from equities e1
             inner join
-                        (select e2.ticker, max(e2.price_date) as max_price_date
-	             from equities e2
-	             group by e2.ticker) agg
+                (select e2.ticker, max(e2.price_date) as max_price_date
+                from equities e2
+                group by e2.ticker) agg
             on e1.ticker = agg.ticker
             and e1.price_date = agg.max_price_date
             inner join aristocrats a
