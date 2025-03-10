@@ -3,10 +3,10 @@ var router = express.Router();
 
 const { Pool } = require('pg');
 const pool = new Pool({
-    user: 'fx',
+    user: 'trade',
     host: 'localhost',
-    database: 'fx',
-    password: 'fx',
+    database: 'trade',
+    password: 'trade',
     port: 5432,
 });
 
