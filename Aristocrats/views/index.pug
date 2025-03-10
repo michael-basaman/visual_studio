@@ -6,9 +6,12 @@ block content
     thead
       tr
         th Ticker
+        th Name
         th Yield
     tbody
       each aristocrat in aristocrats
         tr
-          td= aristocrat.ticker
+          td
+            a(href= aristocrat.homepage_url)= aristocrat.ticker
+          td= aristocrat.name
           td= aristocrat.yield

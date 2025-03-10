@@ -15,7 +15,7 @@ router.get('/', async (req, res) => {
     try {
         const client = await pool.connect();
         const equities = await client.query(`
-            select e1.ticker, e1.price_close
+            select e1.ticker, e1.price_close, a.homepage_url, a.name
             from equities e1
             inner join
                         (select e2.ticker, max(e2.price_date) as max_price_date
@@ -23,6 +23,8 @@ router.get('/', async (req, res) => {
 	             group by e2.ticker) agg
             on e1.ticker = agg.ticker
             and e1.price_date = agg.max_price_date
+            inner join aristocrats a
+            on agg.ticker = a.ticker
             order by e1.ticker`);
 
         const dividends = await client.query(`
@@ -55,7 +57,9 @@ router.get('/', async (req, res) => {
             const aristocrat = {
                 ticker: equity.ticker,
                 yieldFloat: yield,
-                yield: yield.toFixed(2)
+                yield: yield.toFixed(2),
+                homepage_url: equity.homepage_url,
+                name: equity.name
             };
 
             aristocrats.push(aristocrat);
