@@ -1,6 +1,11 @@
 VPNFirewall/.vs/
 VPNFirewall/VPNFirewall/x64/
 VPNFirewall/x64/
+VPNFirewall/VPNFirewall.aps
+VPNFirewall/VPNFirewall.sln
+VPNFirewall/VPNFirewall.vcxproj
+VPNFirewall/VPNFirewall.vcxproj.filters
+VPNFirewall/VPNFirewall.vcxproj.user
 Aristocrats/.vs/
 Aristocrats/.vscode/
 Aristocrats/node_modules/
