@@ -6,6 +6,10 @@ a {
   color: #00B7FF;
 }
 
+h3 {
+    margin-left: 10px;
+}
+
 table {
     border-collapse: collapse;
     margin-left: 10px;
