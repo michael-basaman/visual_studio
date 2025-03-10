@@ -1,4 +1,5 @@
 [https://www.anticirculatory.com/aristocrats/](https://www.anticirculatory.com/aristocrats/)
 
-![image](https://github.com/user-attachments/assets/0f439a7a-599a-4256-85d7-19702e647453)
+![image](https://github.com/user-attachments/assets/d702bc4c-729c-41a1-abc1-6ef9708ba704)
+
 
