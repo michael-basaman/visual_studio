@@ -50,12 +50,12 @@ router.get('/', async (req, res) => {
                 cash_amount = dividend_map.get(equity.ticker);
             }
 
-            let yeild = 0.0 ? Math.abs(equity.price_close) < 0.01 : 400.0 * cash_amount / equity.price_close;
+            let yield = 0.0 ? Math.abs(equity.price_close) < 0.01 : 400.0 * cash_amount / equity.price_close;
 
             const aristocrat = {
                 ticker: equity.ticker,
-                yeildFloat: yeild,
-                yeild: yeild.toFixed(2)
+                yieldFloat: yield,
+                yield: yield.toFixed(2)
             };
 
             aristocrats.push(aristocrat);
@@ -64,10 +64,10 @@ router.get('/', async (req, res) => {
         client.release();
 
         aristocrats.sort((a, b) => {
-            if (a.yeildFloat < b.yeildFloat) {
+            if (a.yieldFloat < b.yieldFloat) {
                 return 1;
             }
-            if (a.yeildFloat > b.yeildFloat) {
+            if (a.yieldFloat > b.yieldFloat) {
                 return -1;
             }
             return 0;
