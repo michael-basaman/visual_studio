@@ -1,0 +1,12 @@
+extends layout
+
+block content
+  h1= title
+  table
+    tr
+      th Ticker
+      th Yeild
+    each aristocrat in aristocrats
+      tr
+        td= aristocrat.ticker
+        td= aristocrat.yeild

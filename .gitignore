@@ -1,3 +1,9 @@
 VPNFirewall/.vs/
 VPNFirewall/VPNFirewall/x64/
 VPNFirewall/x64/
+Aristocrats/.vs/
+Aristocrats/.vscode/
+Aristocrats/node_modules/
+Aristocrats/obj/
+Aristocrats/Aristocrats.esproj
+Aristocrats/Aristocrats.sln
