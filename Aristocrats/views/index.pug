@@ -3,10 +3,12 @@ extends layout
 block content
   h1= title
   table
-    tr
-      th Ticker
-      th Yeild
-    each aristocrat in aristocrats
+    thead
       tr
-        td= aristocrat.ticker
-        td= aristocrat.yeild
+        th Ticker
+        th Yeild
+    tbody
+      each aristocrat in aristocrats
+        tr
+          td= aristocrat.ticker
+          td= aristocrat.yeild
