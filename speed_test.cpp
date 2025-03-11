@@ -50,14 +50,14 @@ int main() {
     elapsed2 /= 1000;
 
     std::cout << std::endl;
-    std::cout << "jmp loop: " << elapsed << "ms" << std::endl;
-    std::cout << "for loop: " << elapsed2 << "ms" << std::endl;
+    std::cout << "jmp loop: " << elapsed << "us" << std::endl;
+    std::cout << "for loop: " << elapsed2 << "us" << std::endl;
 
     return 0;
 }
 
 // same result: 5000000
 // 
-// jnz loop: 200ms
-// for loop: 1696ms
+// jnz loop: 200us
+// for loop: 1696us
 
