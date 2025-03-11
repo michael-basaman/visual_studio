@@ -3,12 +3,12 @@
 
 #define ADD_LOOP(i, n, v)       \
 asm volatile (                  \
-    "movq %1, %%rcx      ;"     \
+    "movq %1, %%rcx     ;"      \
     "movq %2, %%rax     ;"      \
     "movq $0, %%rbx     ;"      \
     "for:               ;"      \
     "addq %%rax, %%rbx  ;"      \
-    "decq %%rcx          ;"     \
+    "decq %%rcx         ;"      \
     "jnz for            ;"      \
     "movq %%rbx, %0     ;"      \
     : "=x"(v)                   \
