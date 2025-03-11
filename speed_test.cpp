@@ -58,6 +58,6 @@ int main() {
 
 // same result: 5000000
 // 
-// jmp loop: 200ms
+// jnz loop: 200ms
 // for loop: 1696ms
 
