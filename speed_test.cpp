@@ -50,7 +50,7 @@ int main() {
     elapsed2 /= 1000;
 
     std::cout << std::endl;
-    std::cout << "jmp loop: " << elapsed << "us" << std::endl;
+    std::cout << "jnz loop: " << elapsed << "us" << std::endl;
     std::cout << "for loop: " << elapsed2 << "us" << std::endl;
 
     return 0;
